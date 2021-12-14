@@ -1,6 +1,13 @@
 stages:
+  - test
   - build
   - deploy
+
+license check:
+  image: golang:1.16
+  stage: test
+  script:
+    - ./licensebot-check.sh
 
 build:
   image: golang:1.16
@@ -15,8 +22,7 @@ build:
   before_script:
     - env GOOS=linux GOARCH=amd64
   script:
-    - GO111MODULE=off go get github.com/hpinc/go3mf
-    - GO111MODULE=off go build
+    - go build
 
 deploy dev:
   image: napp/docker-aws-cli
