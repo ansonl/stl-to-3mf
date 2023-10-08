@@ -2,9 +2,10 @@ package ps3mf
 
 import (
 	"encoding/xml"
+	"io/ioutil"
+
 	"github.com/hpinc/go3mf"
 	"github.com/hpinc/go3mf/spec"
-	"io/ioutil"
 	"mosaicmfg.com/stl-to-3mf/util"
 )
 
@@ -67,22 +68,37 @@ type printableAttr struct {
 	Value bool
 }
 
-func (att printableAttr) Marshal3MFAttr(spec.Encoder) ([]xml.Attr, error) {
+func (att printableAttr) Unmarshal3MFAttr(a spec.XMLAttr) error {
+	if len(a.Value) > 0 && a.Value[0] != '0' {
+		att.Value = true
+	} else {
+		att.Value = false
+	}
+	return nil
+}
+
+func (att printableAttr) Marshal3MF(_ spec.Encoder, s *xml.StartElement) error {
 	val := "0"
 	if att.Value {
 		val = "1"
 	}
-	return []xml.Attr{
-		{
-			Name: xml.Name{
-				Local: "printable",
-			},
-			Value: val,
+
+	a := xml.Attr{
+		Name: xml.Name{
+			Local: "printable",
 		},
-	}, nil
+		Value: val}
+
+	s.Attr = append(s.Attr, a)
+
+	return nil
 }
 
-func getPrintableAttr(printable bool) spec.MarshalerAttr {
+func (att printableAttr) Namespace() string {
+	return ""
+}
+
+func getPrintableAttr(printable bool) spec.AttrGroup {
 	return printableAttr{printable}
 }
 
