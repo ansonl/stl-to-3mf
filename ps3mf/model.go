@@ -3,11 +3,13 @@ package ps3mf
 import (
 	"bufio"
 	"encoding/xml"
+	"fmt"
+	"os"
+
 	"github.com/hpinc/go3mf"
 	"github.com/hpinc/go3mf/importer/stl"
 	"github.com/hpinc/go3mf/spec"
 	"mosaicmfg.com/stl-to-3mf/util"
-	"os"
 )
 
 type ModelOpts struct {
@@ -36,21 +38,31 @@ type xmlns struct {
 	Value string
 }
 
-func (n xmlns) Marshal3MFAttr(spec.Encoder) ([]xml.Attr, error) {
-	return []xml.Attr{
-		{
-			Name: xml.Name{
-				Space: "xmlns",
-				Local: "slic3rpe",
-			},
-			Value: n.Value,
+func (n xmlns) Unmarshal3MFAttr(a spec.XMLAttr) error {
+	n.Value = string(a.Value)
+	return nil
+}
+
+func (n xmlns) Marshal3MF(_ spec.Encoder, s *xml.StartElement) error {
+	a := xml.Attr{
+		Name: xml.Name{
+			Space: "xmlns",
+			Local: "slic3rpe",
 		},
-	}, nil
+		Value: n.Value}
+
+	s.Attr = append(s.Attr, a)
+
+	return nil
+}
+
+func (n xmlns) Namespace() string {
+	return "xmlns"
 }
 
 const slic3rPENamespace = "http://schemas.slic3r.org/3mf/2017/06"
 
-func getSlicerPENamespace() spec.MarshalerAttr {
+func getSlicerPENamespace() spec.AttrGroup {
 	return xmlns{slic3rPENamespace}
 }
 
@@ -109,6 +121,9 @@ func STLtoModel(opts ModelOpts) (model Model, err error) {
 	}
 	model.Transforms = matrix
 
+	fmt.Println("Serialize")
+	fmt.Println(util.M4Identity().Serialize())
+
 	// load RLE data
 	if opts.ColorsPath != "" {
 		colors, colorsErr := util.LoadRLE(opts.ColorsPath)
@@ -132,7 +147,7 @@ func STLtoModel(opts ModelOpts) (model Model, err error) {
 
 func (m *Model) GetTransformedBbox() util.BoundingBox {
 	bbox := util.NewBoundingBox()
-	for _, vertex := range m.Model.Resources.Objects[0].Mesh.Vertices {
+	for _, vertex := range m.Model.Resources.Objects[0].Mesh.Vertices.Vertex {
 		point := util.NewVector3(float64(vertex[0]), float64(vertex[1]), float64(vertex[2])).Transform(m.Transforms)
 		bbox.ExpandByPoint(point)
 	}
